@@ -3,12 +3,12 @@
 We validate the computer-vision approach on **public assembly datasets** (real
 people assembling things) before pointing it at Blufab's real footage.
 
-> Do **not** commit these datasets to the repo — they are multi-GB and licensed.
+> Do **not** commit these datasets to the repo - they are multi-GB and licensed.
 > This file just references where to get them.
 
 ## IKEA-ASM (recommended starting point)
 Real videos of people assembling furniture (profiles, screws), with 33 action
-classes, object segmentation and pose — very close to "assembling a frame on a table".
+classes, object segmentation and pose - very close to "assembling a frame on a table".
 
 - Download (Google Drive folder): https://drive.google.com/drive/folders/1xkDp--QuUVxgl4oJjhCDb2FWNZTkYANq
 - Project page: https://ikeaasm.github.io/
@@ -22,7 +22,7 @@ classes, object segmentation and pose — very close to "assembling a frame on a
 - **IndustReal / MECCANO** — industrial procedure-step recognition.
 
 ## How to use
-On a machine with a GPU (e.g. Vicen's server, or a Mac with `device="mps"`):
+On a machine with a GPU:
 
 ```bash
 pip install ultralytics supervision
