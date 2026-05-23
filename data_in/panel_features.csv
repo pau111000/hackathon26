@@ -1,0 +1,16 @@
+name,n_frames,n_studs,n_noggins,n_boards,height_mm,n_drillings,cladding
+PQT1,1,2,0,1,2800,1,ceramic
+PQT2,2,6,3,2,2600,2,standard
+PQT3,2,5,3,1,2400,4,standard
+PQT4,2,5,2,1,2600,1,ceramic
+PQT5,1,4,0,1,2600,3,standard
+PQT6,1,3,2,2,2800,3,ceramic
+PQT7,2,6,4,1,2800,5,ceramic
+PQT8,1,3,2,1,2400,6,ceramic
+PQT9,1,4,1,2,2400,0,standard
+PQT10,1,3,2,1,2600,3,ceramic
+PQT11,1,2,0,1,2400,5,standard
+PQT12,1,4,3,2,3000,0,ceramic
+PQT13,1,2,0,2,2400,4,standard
+PQT14,1,4,3,2,2800,5,ceramic
+PQT15,2,6,0,2,2600,0,ceramic

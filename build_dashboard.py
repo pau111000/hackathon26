@@ -1,0 +1,123 @@
+"""Generate the interactive dashboard HTML straight from the data + model, so it
+never goes out of sync. Run:  python generate_data.py -> python build_dashboard.py
+Output: blufab_time_estimator_DASHBOARD.html (open it with a double-click).
+"""
+import json
+import os
+
+from src.features import OP_KEYS, OP_LABEL
+from src.model import fit, predict
+
+HERE = os.path.dirname(__file__)
+data = json.load(open(os.path.join(HERE, "data", "panels.json"), encoding="utf-8"))
+panels = data["panels"]
+train = [p for p in panels if p["split"] == "train"]
+model = fit(train)
+pct = max(model["mape"], model["operator_spread"], 0.03)
+
+test_err = []
+for p in (q for q in panels if q["split"] == "test"):
+    r = predict(p, model)
+    test_err.append(abs(r["total"] - p["total_time_s"]) / p["total_time_s"])
+test_mape = sum(test_err) / len(test_err) if test_err else 0
+
+blob = {
+    "unit": model["unit_times"], "pct": round(pct, 4),
+    "fit": round(model["mape"], 4), "testmape": round(test_mape, 4),
+    "ops": [[k, OP_LABEL[k]] for k in OP_KEYS],
+    "orders": {o["order_id"]: o["panels"] for o in data["production_orders"]},
+    "panels": [{"n": p["name"], "split": p["split"], "op": p["operator"],
+                "fr": p["n_frames"], "st": p["n_studs"], "ng": p["n_noggins"],
+                "bd": p["n_boards"], "h": p["height_mm"], "dr": p["n_drillings"],
+                "clad": p["cladding"], "tot": p["total_time_s"]} for p in panels],
+}
+
+HTML = """<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blufab TimeTwin — dashboard</title><style>
+:root{--ink:#2C2C2A;--muted:#5F5E5A;--hint:#888780;--line:rgba(0,0,0,0.12);--bg:#FFF;--bg2:#F7F6F2;
+--teal:#0F6E56;--teal-l:#E1F5EE;--teal-b:#1D9E75;--purple:#534AB7;--purple-l:#EEEDFE;
+--amber:#854F0B;--amber-l:#FAEEDA;--red:#A32D2D;--red-l:#FCEBEB;--green:#3B6D11;--green-l:#EAF3DE;}
+*{box-sizing:border-box}body{margin:0;background:var(--bg2);color:var(--ink);
+font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.5;font-size:16px}
+.wrap{max-width:920px;margin:0 auto;padding:22px 18px 60px}h1{font-size:23px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:15px;margin:0 0 6px}.note{font-size:12px;color:var(--hint);background:var(--bg);
+border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:12px 0 20px}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:18px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--hint);margin:0 0 14px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--hint);font-weight:500;font-size:11px;text-transform:uppercase}td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:14px}.ctrl label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+select,input[type=range]{width:100%}select{font-family:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg);color:var(--ink)}
+.val{font-variant-numeric:tabular-nums;font-weight:500}.total{font-size:30px;font-weight:500;font-variant-numeric:tabular-nums}
+.range{color:var(--muted);font-size:14px}.chip{display:inline-block;font-size:12px;padding:3px 9px;border-radius:8px}
+.c-green{background:var(--green-l);color:var(--green)}.c-amber{background:var(--amber-l);color:var(--amber)}
+.c-red{background:var(--red-l);color:var(--red)}.c-purple{background:var(--purple-l);color:var(--purple)}
+.kpi{display:flex;gap:24px;flex-wrap:wrap;margin-top:6px}.kpi div{font-size:13px;color:var(--muted)}.kpi b{display:block;font-size:20px;color:var(--ink);font-weight:500}
+.bar{height:10px;border-radius:5px;background:var(--teal-b)}.bar-bg{background:var(--bg2);border-radius:5px;overflow:hidden}
+@media(max-width:620px){.controls{grid-template-columns:1fr}}</style></head><body><div class="wrap">
+<h1>Panel production-time estimator</h1>
+<p class="sub">Tiempo por micro-operación y total de un panel de tabique, a partir de sus características.</p>
+<div class="note">Datos sintéticos de ejemplo (no son datos reales de Blufab). Corre en tu navegador. El modelo aprende los segundos por micro-operación de paneles etiquetados y luego estima cualquier panel contando sus operaciones.</div>
+<div class="card"><h2>Lo que el modelo aprendió</h2>
+<div class="kpi"><div><b id="kFit">-</b> error de ajuste</div><div><b id="kTest">-</b> error en 3 no vistos</div><div><b id="kBand">-</b> banda de confianza</div></div>
+<table style="margin-top:12px"><thead><tr><th>Micro-operación</th><th class="num">Tiempo / unidad</th></tr></thead><tbody id="unitTable"></tbody></table></div>
+<div class="card"><h2>Estimar un panel</h2>
+<div class="controls">
+<div class="ctrl"><label>Panel</label><select id="sel"></select></div>
+<div class="ctrl"><label>Marcos: <span class="val" id="vfr"></span></label><input type="range" id="fr" min="1" max="2" step="1"></div>
+<div class="ctrl"><label>Montantes: <span class="val" id="vst"></span></label><input type="range" id="st" min="2" max="8" step="1"></div>
+<div class="ctrl"><label>Travesaños (noggins): <span class="val" id="vng"></span></label><input type="range" id="ng" min="0" max="6" step="1"></div>
+<div class="ctrl"><label>Placas: <span class="val" id="vbd"></span></label><input type="range" id="bd" min="1" max="2" step="1"></div>
+<div class="ctrl"><label>Taladros: <span class="val" id="vdr"></span></label><input type="range" id="dr" min="0" max="10" step="1"></div>
+<div class="ctrl"><label>Altura (mm): <span class="val" id="vh"></span></label><input type="range" id="h" min="2400" max="3000" step="200"></div>
+<div class="ctrl"><label><input type="checkbox" id="clad"> Con cerámica</label></div>
+</div>
+<div style="margin-top:16px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+<div><span class="total" id="tot">-</span> <span style="font-size:15px;color:var(--muted)">s total</span></div>
+<div class="range" id="rng"></div><div id="orderChip" class="chip c-purple"></div><div id="actualChip"></div></div>
+<div class="range" id="mins" style="margin-top:2px"></div>
+<table style="margin-top:14px"><thead><tr><th>Micro-operación</th><th class="num">Número</th><th class="num">x unidad (s)</th><th class="num">= tiempo (s)</th></tr></thead><tbody id="bd2"></tbody></table></div>
+<div class="card"><h2>Validación - predicho vs real (paneles no vistos)</h2>
+<table><thead><tr><th>Panel</th><th class="num">Predicho (s)</th><th class="num">Real (s)</th><th class="num">Error</th><th style="width:32%">&nbsp;</th></tr></thead><tbody id="valTable"></tbody></table></div>
+</div>
+<script>
+const D=__BLOB__;
+const OPK=D.ops.map(o=>o[0]); const LBL=Object.fromEntries(D.ops); const UNIT=D.unit; const PCT=D.pct;
+function counts(p){const tracks=2*p.fr;const spl=Math.max(2,Math.round(p.h/300));const screws=p.bd*p.st*spl;
+const j=p.st*2+p.ng*2;const cer=p.clad?p.bd:0;
+return {setup_jig:1,place_track:tracks,place_stud:p.st,place_noggin:p.ng,clinch_frame:j,place_board:p.bd,screw_board:screws,drill_hole:p.dr,place_ceramic:cer,turn_and_finish:1,unscrew_exception:Math.round(0.05*screws)};}
+function predict(p){const c=counts(p);const per={};let t=0;for(const k of OPK){per[k]=(c[k]||0)*(UNIT[k]||0);t+=per[k];}return {c,per,tot:t};}
+function orderOf(n){for(const o in D.orders) if(D.orders[o].includes(n)) return o;return '-';}
+document.getElementById('unitTable').innerHTML=D.ops.map(([k,l])=>`<tr><td>${l}</td><td class="num">${(UNIT[k]||0).toFixed(1)} s</td></tr>`).join('');
+document.getElementById('kFit').textContent=(D.fit*100).toFixed(1)+'%';
+document.getElementById('kTest').textContent=(D.testmape*100).toFixed(1)+'%';
+document.getElementById('kBand').textContent='±'+(PCT*100).toFixed(0)+'%';
+document.getElementById('valTable').innerHTML=D.panels.filter(p=>p.split==='test').map(p=>{const r=predict(p);const err=Math.abs(r.tot-p.tot)/p.tot*100;const w=Math.min(100,r.tot/14);const cls=err<8?'c-green':(err<15?'c-amber':'c-red');
+return `<tr><td>${p.n}</td><td class="num">${r.tot.toFixed(0)}</td><td class="num">${p.tot.toFixed(0)}</td><td class="num"><span class="chip ${cls}">${err.toFixed(1)}%</span></td><td><div class="bar-bg"><div class="bar" style="width:${w}%"></div></div></td></tr>`;}).join('');
+const sel=document.getElementById('sel');sel.innerHTML='<option value="custom">Panel personalizado</option>'+D.panels.map((p,i)=>`<option value="${i}">${p.n}${p.split==='test'?' (no visto)':''}</option>`).join('');
+function setS(p){fr.value=p.fr;st.value=p.st;ng.value=p.ng;bd.value=p.bd;dr.value=p.dr;h.value=p.h;clad.checked=(p.clad==='ceramic'||p.clad===true);}
+const fr=document.getElementById('fr'),st=document.getElementById('st'),ng=document.getElementById('ng'),bd=document.getElementById('bd'),dr=document.getElementById('dr'),h=document.getElementById('h'),clad=document.getElementById('clad');
+function cur(){return {fr:+fr.value,st:+st.value,ng:+ng.value,bd:+bd.value,dr:+dr.value,h:+h.value,clad:clad.checked};}
+function render(){const p=cur();vfr.textContent=p.fr;vst.textContent=p.st;vng.textContent=p.ng;vbd.textContent=p.bd;vdr.textContent=p.dr;vh.textContent=p.h;
+const r=predict(p);document.getElementById('tot').textContent=r.tot.toFixed(0);
+document.getElementById('rng').textContent=`rango ${(r.tot*(1-PCT)).toFixed(0)}-${(r.tot*(1+PCT)).toFixed(0)} s (±${(PCT*100).toFixed(0)}%)`;
+document.getElementById('mins').textContent='≈ '+(r.tot/60).toFixed(1)+' min';
+let actual='';const idx=sel.value;
+if(idx!=='custom'){const kp=D.panels[+idx];document.getElementById('orderChip').textContent='Orden '+orderOf(kp.n);
+const same=kp.fr===p.fr&&kp.st===p.st&&kp.ng===p.ng&&kp.bd===p.bd&&kp.dr===p.dr&&kp.h===p.h&&((kp.clad==='ceramic')===p.clad);
+if(same){const e=Math.abs(r.tot-kp.tot)/kp.tot*100;const cls=e<8?'c-green':(e<15?'c-amber':'c-red');actual=`<span class="chip ${cls}">real ${kp.tot.toFixed(0)} s · error ${e.toFixed(1)}%</span>`;}}
+else document.getElementById('orderChip').textContent='Personalizado';
+document.getElementById('actualChip').innerHTML=actual;
+document.getElementById('bd2').innerHTML=D.ops.filter(([k])=>r.c[k]>0).map(([k,l])=>`<tr><td>${l}</td><td class="num">${r.c[k]}</td><td class="num">${(UNIT[k]||0).toFixed(1)}</td><td class="num">${r.per[k].toFixed(0)}</td></tr>`).join('');}
+sel.addEventListener('change',()=>{if(sel.value!=='custom')setS(D.panels[+sel.value]);render();});
+[fr,st,ng,bd,dr,h].forEach(e=>e.addEventListener('input',()=>{sel.value='custom';render();}));
+clad.addEventListener('change',()=>{sel.value='custom';render();});
+sel.value=String(D.panels.findIndex(p=>p.split==='test'));setS(D.panels[+sel.value]);render();
+</script></body></html>"""
+
+html = HTML.replace("__BLOB__", json.dumps(blob))
+out = os.path.join(HERE, "blufab_time_estimator_DASHBOARD.html")
+with open(out, "w", encoding="utf-8") as f:
+    f.write(html)
+print("Wrote", out)

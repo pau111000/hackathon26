@@ -1,0 +1,23 @@
+[
+  {
+    "panel": "PQT13",
+    "predicted_s": 694,
+    "low_s": 652,
+    "high_s": 736,
+    "order": "PO-1003"
+  },
+  {
+    "panel": "PQT14",
+    "predicted_s": 816,
+    "low_s": 768,
+    "high_s": 865,
+    "order": "PO-1003"
+  },
+  {
+    "panel": "PQT15",
+    "predicted_s": 480,
+    "low_s": 451,
+    "high_s": 509,
+    "order": "PO-1003"
+  }
+]
