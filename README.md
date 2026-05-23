@@ -50,8 +50,6 @@ python run_real_data.py        # ingest + estimate (no code changes)
 Working synthetic prototype: recovers unit times within a few %, **~5–7% error
 on unseen panels**, with a stated confidence band. Ready to ingest real data.
 
-![Solution](docs/solution.jpg)
-
 ## Project structure
 
 ```
