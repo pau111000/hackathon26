@@ -57,7 +57,7 @@ src/            features, model, ingest, vision_lite (real), vision_yolo (produc
 data/           synthetic dataset (panels.json)
 data_in/        sample inputs in Blufab's format (Excel/CSV)
 cli.py · run_end2end.py · run_real_data.py · build_dashboard.py · app.py
-COMO_CORRERLO_EN_TU_MAC.md · GITHUB_COMO_SUBIR.md
+
 ```
 
 ## Data & IP
