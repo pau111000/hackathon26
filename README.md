@@ -62,9 +62,5 @@ cli.py · run_end2end.py · run_real_data.py · build_dashboard.py · app.py
 
 ## Data & IP
 
-All bundled data is **synthetic**. Do **not** commit Blufab's confidential data
-(videos, real Excel/drawings) — the `.gitignore` blocks videos and `data_real/`.
-Challenge data is the owner's property (delete within 48h; 60-day embargo).
-
 Public datasets to validate the vision on real video (IKEA-ASM, Assembly101…)
 are referenced in [DATASETS.md](DATASETS.md) — linked, not committed (multi-GB, CC BY-NC).
